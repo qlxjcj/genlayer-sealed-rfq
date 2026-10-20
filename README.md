@@ -195,23 +195,81 @@ nothing" is a real assertion.
 
 Deployed on Bradbury at `0xE936df8C8Ad6B7d048281FC74eA87983DB0B5a98`.
 
-The delivery log used by the live run is in this repository, served from two
-hosts:
+The record the contract reads is in this repository, served from two hosts:
 
 ```
 raw.githubusercontent.com/qlxjcj/genlayer-sealed-rfq/master/fixtures/delivery-log.txt
 cdn.jsdelivr.net/gh/qlxjcj/genlayer-sealed-rfq@master/fixtures/delivery-log.txt
 ```
 
-It contains two lines:
+It names two purchase orders:
 
 ```
 Order PO-4711: marker ACME-7 delivered on 2026-10-20.
 Order PO-9001: marker ACME-9 planned for November, not shipped yet.
 ```
 
-so one purchase order is genuinely delivered and the other is not — the two
-cases the contract has to tell apart.
+so one order is genuinely delivered and the other is not.
+
+### The delivery path
+
+Two purchase orders were opened for `PO-4711` with a 0.05 GEN budget and a 0.0001 GEN bond.
+`rfq 8` carried two bidders, who sealed 0.02 and 0.03 GEN and opened them inside the reveal
+window. `open_award` ranked the two revealed prices arithmetically — no model call — and gave the
+job to the cheaper one. `check_delivery` then fetched both hosts, consensus quoted the sentence
+
+```
+Order PO-4711: marker ACME-7 delivered on 2026-10-20.
+```
+
+and code confirmed that sentence occurs verbatim in **both** fetched bodies, carries `ACME-7`, and
+sits in documents that name `PO-4711`. The books afterwards:
+
+```
+phase         SETTLED
+budget        50000000000000000
+paid          20000000000000000   -> the winning bidder
+refunded      30000000000000000   -> change to the buyer
+bonds_back    200000000000000     -> both bonds home (DELIVERED + OUTBID)
+paid + refunded == budget : true
+```
+
+`rfq 6` was a second purchase order for the same record and settled the same way, so the payment is
+not a one-off fluke of a single id. Both winners are the same bidder address
+`0x347e462023c3bf2630d201B393656fBEF073b363`; the outbid bidder's bond came home as `OUTBID`.
+
+### The fail-closed path, and what this run does not show
+
+A third purchase order (`rfq 7`) was opened for `PO-9001` against the same record, with two bidders.
+One revealed; the other committed and never opened its price, so `open_award` marked it `FORFEITED`
+and the bond stayed with the contract, to the buyer:
+
+```
+phase         AWARDED        (left mid-delivery)
+forfeited     100000000000000    the unopened commitment
+order         [ {rank 0, price 0.02, REVEALED} ]
+```
+
+Its delivery checks were submitted but the consensus round kept timing out against this endpoint, so
+`rfq 7` is still `AWARDED` rather than closed. That is worth stating plainly: the check is
+**permissionless**, so anyone can drive that purchase order to its end, and the record it reads says
+`not shipped yet`, so the remaining path is `MISSED` and then a refund of the budget.
+
+The **cascade** — a winner missing its window and the job moving to the next price — is therefore not
+exercised on chain here. The endpoint was unstable for the whole run: several writes were rejected
+with `transaction nonce is not consistent` and reads with `fetch failed`, and the only auction with an
+undelivered record had a single revealed bidder left. The cascade is pinned by four direct-mode tests
+that need no network:
+
+```
+test_a_missed_window_hands_the_job_to_the_next_bid
+test_the_cascade_skips_a_bidder_who_already_missed
+test_a_failed_delivery_never_pays_the_buyer
+test_conservation_holds_with_a_no_show_and_a_delivery
+```
+
+Two things the tests only predict *were* seen on chain: an unopened commitment was forfeited at award
+time (`FORFEITED`), and the outbid bidder's bond came home as `OUTBID` at settlement.
 
 ## Source integrity
 
