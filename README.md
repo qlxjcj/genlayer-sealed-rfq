@@ -193,7 +193,7 @@ nothing" is a real assertion.
 
 ## Live on chain
 
-Deployed on Bradbury at `0xA1d5bF6cB3eF1b7D0d0F1f2C0b3a4B5c6D7e8F90`.
+Deployed on Bradbury at `0xE936df8C8Ad6B7d048281FC74eA87983DB0B5a98`.
 
 The delivery log used by the live run is in this repository, served from two
 hosts:
@@ -216,8 +216,8 @@ cases the contract has to tell apart.
 ## Source integrity
 
 ```
-sha256  (fill after deploy)
-bytes   (fill after deploy)
+sha256  78283440bf72a9db285e20bea8c72a97b0697b2805cd71511fc68f36f5ea5011
+bytes   19991
 ```
 
 Reproduce with `genlayer code <address> --rpc https://rpc-bradbury.genlayer.com`
