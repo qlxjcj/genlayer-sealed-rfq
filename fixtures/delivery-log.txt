@@ -1,0 +1,5 @@
+Warehouse delivery log
+======================
+
+Order PO-4711: marker ACME-7 delivered on 2026-10-20.
+Order PO-9001: marker ACME-9 planned for November, not shipped yet.
